@@ -12,8 +12,8 @@ from generador_inventario_productos import obtener_inventario_productos
 from funciones_utiles import crear_id
 from producto_clase import Producto
 from carrito_clase import Carrito
-import time
-
+import json
+import pickle
 #--------------Obeter los inventarios de clientes y Productos---------
 inventario_clientes = obtener_inventario_clientes()
 inventario_productos = obtener_inventario_productos()
@@ -27,11 +27,10 @@ def inventarios_Productos_integers():
 inventarios_Productos_integers()          
                  
 #----------------------Menu de Opciones Main Loop---------------------
-Menu_Opciones = {1:'Agregar Productos al carrito', 2:'Pagar', 3:'Facturar',0:'Salir' }
-
+Menu_Opciones = {1:'Agregar Productos al carrito',
+                 2:'Pagar',3:'Facturar | Detalle',0:'Salir'}
 # ---------------------Inicializar Variables--------------------------
 inventario_de_carritos = {}
-
 # -------------------Funciones/Acciones-------------------------------
 #-1 Obtener carritos del cliente
 def obtener_carritos(cedula_cliente):
@@ -71,30 +70,30 @@ def actualizar_invetario_productos(producto,cantidad):
     inventario_productos[producto]['disponible'] -= cantidad
 
 
-agregar_carrito_al_inventario(cedula_cliente='1234')
-
-
-
 # # # ----------------------Control de flujo-------------------------------
 def control_flujo():
     cliente_cedula = 0
     option = 0
     ML_Control = 0
-    #-------------Verificar si el cliente existe----------------------
+    #-------------Peedir Datos a cliente ----------------------
     print('Por Favor ingrese su numero de cedula')
     cliente_cedula = input('Cedula:')
+    #-------------Verificar si, cliente No existe, salir-------       
+    if cliente_cedula not in inventario_clientes:
+        print('El Cliente con cedula:',cliente_cedula,' No existe')
+        ML_Control = 0
+    #-------------si cliente existe, continuar ----------------    
     if cliente_cedula in inventario_clientes:
-        print('Bienvenido Cliente :', cliente_cedula)
-        
+        print('Bienvenido Cliente :', cliente_cedula)        
     #-------------Obtener los carritos del cliente----------------------
         lista_carritos_del_cliente = obtener_carritos(cedula_cliente=cliente_cedula)
         if len(lista_carritos_del_cliente) == 0:       
     #-------------Si no tiene Carritos, crear uno----------------------
             agregar_carrito_al_inventario(cedula_cliente=cliente_cedula)
         mi_carrito = obtener_carritos(cedula_cliente=cliente_cedula)[0]
-        print('Su carritos son:', obtener_carritos(cedula_cliente=cliente_cedula))
+        print('info carrito :', obtener_carritos(cedula_cliente=cliente_cedula))
         ML_Control = 1
-    #--------------------Si existe, lanzar menu-------------------- 
+    
     #---------------------Loop Principal --------------------------      
     while ML_Control == 1:
     #---------------------Menu de Opciones-------------------------
@@ -102,53 +101,56 @@ def control_flujo():
         print('Por Favor seleccione una opcion del menu:')
         for opciones in Menu_Opciones:
             print(opciones,":",Menu_Opciones.get(opciones))
-        option = int(input('Opcion:' ))
+        option = int(input('Opcion:' )) 
         print('*'*50)
         print('A seleccionado la opcion #', option,":", Menu_Opciones.get(option))
         print('*'*50)
-    
     #---------------------Ejecutar Opciones -----------------------
         #Agregar productos al carrito
         if option == 1:
               print('por favor ingrese producto y cantidad')
-              producto= input('Producto:' )
-              cantidad = int(input('Cantidad:' ))
-               # llamando funcion revisar inventario de productos
-              if revisar_inventario_productos(producto, cantidad) == 0:
-                  print('la cantidad de', producto, 'es mayor al disponible')
-                  print(inventario_productos.get(producto))
+              producto1= input('Producto:' ) #'leche' 
+              cantidad1 = int(input('Cantidad:' )) #2 
+               #Ejecutar funcion: revisar inventario de productos
+              if revisar_inventario_productos(producto1, cantidad1) == 0:
+                  print('la cantidad de', producto1, 'es mayor al disponible')
+                  print(inventario_productos.get(producto1))
                   ML_Control = 1                 
-              if revisar_inventario_productos(producto,cantidad) == 1:
-                  
-                  item = inventario_productos.get(producto)
-        
-                  mi_carrito.agregar_item(item)
-                  # mi_carrito.lista_articulos.apend([{'producto': 'leche', 'disponible': 5, 'costo_unitario': 1000}, 5])
-                  
-                  print('items cliente', mi_carrito.lista_articulos)
-                  stop = input()
-                  # agregar_producto_al_carrito(producto, cantidad)
+              if revisar_inventario_productos(producto1,cantidad1) == 1:
+              #Obtner item de invetario productos
+                  item = inventario_productos.get(producto1)
+                  #Agregar item a carrito de cliente
+                  mi_carrito.agregar_item(Producto(nombre= item, cantidad=cantidad1))
+                  print('Producto agregado satisfactoriamente')                  
                   ML_Control = 1
-                 
-        #Pagar los productos al carrito        
+        #Procesar pago
         if option == 2:
-            print('el monto Total por Pagar es de')
+            saldo = 0
+            for p in mi_carrito.lista_articulos:
+                saldo += p['nombre']['costo_unitario']*p['cantidad']
+            print('El Monto total es de $:', saldo)
             ML_Control = 1
+            
         #Facturar los productos al carrito
         if option == 3:
-            print('La Factura ha sido creada bajo el nombre:')
-            ML_Control = 1
+             saldo1 = 0
+             for p in mi_carrito.lista_articulos:
+                 producto = p['nombre']['producto']
+                 cantidad = p['cantidad']
+                 costo = p['nombre']['costo_unitario']
+                 saldo1 = p['nombre']['costo_unitario']*p['cantidad']
+                 print(producto, cantidad,'x', costo,'| total',producto,':','$',saldo1)
+             print('*'*50)
+             print('Total $:',saldo)
+             json.dump(mi_carrito.lista_articulos, open("factura_cliente.txt",'w'))
+             print('La Factura Cliente #:',cliente_cedula,'ah sido creada' )
+             ML_Control = 1
         #Salir del menu
-        
         if option == 0:
             print('Hasta Luego gracias por su compra')
             ML_Control = 0
 
-    # #-------------Si Cliente No existe, salir-------------------------        
-
-    if cliente_cedula not in inventario_clientes:
-        print('El Cliente con cedula:',cliente_cedula,' No existe')
-        ML_Control = 0
+#-------------Fin del Codigo, salir-------------------------        
 
 
 
